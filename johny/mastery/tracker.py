@@ -111,6 +111,8 @@ class MasteryRecord:
             time_spent_seconds=time_spent_seconds,
         )
         self.history.append(event)
+        if len(self.history) > 50:
+            self.history = self.history[-50:]
 
         return new_level
 
@@ -171,7 +173,7 @@ class MasteryRecord:
             "average_score": self.average_score,
             "stability": self.stability,
             "last_review": self.last_review,
-            "history": [e.to_dict() for e in self.history[-50:]],  # Keep last 50
+            "history": [e.to_dict() for e in self.history],
         }
 
     @classmethod
