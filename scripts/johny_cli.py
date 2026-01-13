@@ -15,6 +15,9 @@ import argparse
 import json
 import os
 import sys
+import random
+import uuid
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 # Add parent directory to path for imports
@@ -28,10 +31,59 @@ from johny.practice import SessionManager
 
 STATE_DIR = os.path.join(os.path.expanduser("~"), ".zee", "johny")
 GRAPH_PATH = os.path.join(STATE_DIR, "knowledge_graph.json")
+WIDE_EVENTS_DIR = os.path.join(STATE_DIR, "logs")
+WIDE_EVENTS_SAMPLE_RATE = float(os.environ.get("JOHNY_WIDE_EVENTS_SAMPLE_RATE", "0.05"))
+
+
+def _wide_event_path() -> str:
+    date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return os.path.join(WIDE_EVENTS_DIR, f"johny-wide-{date}.jsonl")
 
 
 def _ensure_state_dir() -> None:
     os.makedirs(STATE_DIR, exist_ok=True)
+
+
+def _summarize_data(data: Any) -> Dict[str, Any]:
+    if data is None:
+        return {}
+    if isinstance(data, dict):
+        return {"keys": sorted(data.keys()), "count": len(data)}
+    if isinstance(data, list):
+        return {"count": len(data)}
+    return {"type": type(data).__name__}
+
+
+def _log_wide_event(
+    command: str,
+    ok: bool,
+    data: Any = None,
+    error: Optional[str] = None,
+) -> None:
+    if not ok:
+        keep = True
+        reason = "error"
+    else:
+        keep = (WIDE_EVENTS_SAMPLE_RATE > 0) and (random.random() < WIDE_EVENTS_SAMPLE_RATE)
+        reason = "sample"
+    if not keep:
+        return
+    try:
+        os.makedirs(WIDE_EVENTS_DIR, exist_ok=True)
+        event = {
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "service": "johny-cli",
+            "trace_id": str(uuid.uuid4()),
+            "command": command,
+            "outcome": "ok" if ok else "error",
+            "data": _summarize_data(data),
+            "error": error,
+            "sample": {"kept": keep, "reason": reason, "rate": WIDE_EVENTS_SAMPLE_RATE},
+        }
+        with open(_wide_event_path(), "a", encoding="utf-8") as handle:
+            handle.write(json.dumps(event) + "\n")
+    except Exception:
+        return
 
 
 def _load_graph() -> KnowledgeGraph:
@@ -46,10 +98,12 @@ def _load_graph() -> KnowledgeGraph:
 
 
 def _json_ok(command: str, data: Any) -> None:
+    _log_wide_event(command, True, data=data)
     print(json.dumps({"ok": True, "command": command, "data": data}))
 
 
-def _json_error(message: str) -> int:
+def _json_error(message: str, command: Optional[str] = None) -> int:
+    _log_wide_event(command or "error", False, error=message)
     print(json.dumps({"ok": False, "error": message}))
     return 1
 
