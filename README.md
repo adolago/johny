@@ -2,6 +2,13 @@
 
 Johny is a learning coach persona specializing in deliberate practice for mathematics and informatics. Inspired by Math Academy's mastery-based approach and Anders Ericsson's research on deliberate practice.
 
+> **Fork note** — This repo is vendored into agent-core and exposed as the Johny persona. If you're using agent-core, you do not need to install Johny separately.
+
+## Release
+
+- **Version:** v0.1.0-20260114
+- **Distribution:** bundled with agent-core
+
 ## Core Philosophy
 
 | Principle | Description |
