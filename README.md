@@ -162,8 +162,8 @@ Johny exposes skills for use with agent-core:
 ### With agent-core daemon
 
 ```bash
-# Start daemon with external gateway
-agent-core daemon --external-gateway
+# Start daemon (spawns gateway)
+agent-core daemon
 
 # Route to Johny via persona selection
 curl -X POST http://127.0.0.1:3210/session \
